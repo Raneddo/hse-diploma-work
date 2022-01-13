@@ -2,6 +2,10 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ADSD.Backend.Auth", "ADSD.Backend.Auth\ADSD.Backend.Auth.csproj", "{0187A294-F371-4EED-9427-E186B0BD1E9E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ADSD.Backend.App", "ADSD.Backend.App\ADSD.Backend.App.csproj", "{E10C0555-6454-4D6E-9DAC-7A387B693D33}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ADSD.Backend.Common", "ADSD.Backend.Common\ADSD.Backend.Common.csproj", "{A6163D00-41F6-47F6-8E61-B3BEC25778AE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +16,13 @@ Global
 		{0187A294-F371-4EED-9427-E186B0BD1E9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0187A294-F371-4EED-9427-E186B0BD1E9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0187A294-F371-4EED-9427-E186B0BD1E9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E10C0555-6454-4D6E-9DAC-7A387B693D33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E10C0555-6454-4D6E-9DAC-7A387B693D33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E10C0555-6454-4D6E-9DAC-7A387B693D33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E10C0555-6454-4D6E-9DAC-7A387B693D33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6163D00-41F6-47F6-8E61-B3BEC25778AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6163D00-41F6-47F6-8E61-B3BEC25778AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6163D00-41F6-47F6-8E61-B3BEC25778AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6163D00-41F6-47F6-8E61-B3BEC25778AE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

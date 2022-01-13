@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Threading.Tasks;
 using ADSD.Backend.Auth.Models;
 using ADSD.Backend.Auth.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +7,7 @@ namespace ADSD.Backend.Auth.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AuthController
+    public class AuthController : Controller
     {
         private readonly AuthService _authService;
 
@@ -17,10 +17,15 @@ namespace ADSD.Backend.Auth.Controllers
         }
         
         [HttpPost("register/{link}")]
-        public IActionResult RegisterByLink([FromRoute] string link, [FromBody] UserInfo userInfo)
+        public async Task<IActionResult> RegisterByLink([FromRoute] string link, [FromBody] UserInfo userInfo)
         {
-            throw new NotImplementedException();
-            // return _authService.RegisterUserByLink(link, userInfo);
+            return Json(await _authService.RegisterUserByLink(link, userInfo));
+        }
+
+        [HttpPost("login/")]
+        public async Task<IActionResult> Login([FromBody] UserPassPair userPassPair)
+        {
+            return Json(await _authService.Login(userPassPair.UserName, userPassPair.Password));
         }
         
     }

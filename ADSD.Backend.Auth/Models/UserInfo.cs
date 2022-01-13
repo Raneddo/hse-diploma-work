@@ -12,5 +12,6 @@
         
         public string DocumentName { get; init; }
         public string DocumentNumber { get; init; }
+        public string Groups { get; set; }
     }
 }
