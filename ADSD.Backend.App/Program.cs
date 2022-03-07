@@ -1,6 +1,7 @@
 using System.Net;
 using ADSD.Backend.App;
 using ADSD.Backend.App.Clients;
+using ADSD.Backend.App.Services;
 using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache(item => { item.SizeLimit = 1000; });
 builder.Services.AddScoped<SessionTokenDbClient>();
 builder.Services.AddScoped<BasicAuthorizationHandler>();
+builder.Services.AddScoped<AgendaService>();
+builder.Services.AddScoped<AppDbClient>();
 // builder.Services.AddScoped<IAuthorizationHandler, BasicAuthorizationHandler>();
 //
 // builder.Services.AddAuthorization(options =>

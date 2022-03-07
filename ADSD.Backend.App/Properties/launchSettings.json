@@ -25,7 +25,7 @@
       "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "SQL_EPCCONF_PASSWORD": "#password here"
+        "SQL_EPCCONF_PASSWORD": "pX0lU2pW5z"
       }
     }
   }
