@@ -16,6 +16,7 @@ builder.Services.AddMemoryCache(item => { item.SizeLimit = 1000; });
 builder.Services.AddScoped<SessionTokenDbClient>();
 builder.Services.AddScoped<BasicAuthorizationHandler>();
 builder.Services.AddScoped<AgendaService>();
+builder.Services.AddScoped<PollService>();
 builder.Services.AddScoped<AppDbClient>();
 // builder.Services.AddScoped<IAuthorizationHandler, BasicAuthorizationHandler>();
 //

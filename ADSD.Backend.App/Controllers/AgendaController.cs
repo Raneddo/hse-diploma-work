@@ -28,10 +28,10 @@ public class AgendaController : Controller
         return Json(_agendaService.GetAgendaInfo(id));
     }
 
-    [HttpPost("")]
-    public JsonResult AddAgenda([FromBody] AgendaHeader header)
+    [HttpPost]
+    public JsonResult AddAgenda([FromBody] UpdateAgendaRequest updateAgendaRequest)
     {
-        var id = _agendaService.AddAgenda(header);
+        var id = _agendaService.CreateAgenda(updateAgendaRequest);
 
         return Json(new {Id = id});
     }
@@ -69,8 +69,8 @@ public class AgendaController : Controller
         });
     }
 
-    [HttpPost("{agendaId:int}/poll")]
-    public JsonResult AddPoll([FromRoute] int agendaId)
+    [HttpPost("{agendaId:int}/poll/{pollId:int}")]
+    public JsonResult AddPoll([FromRoute] int agendaId, [FromRoute] int pollId)
     {
         throw new NotImplementedException();
     }

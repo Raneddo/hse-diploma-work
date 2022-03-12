@@ -27,274 +27,803 @@ public class AppDbClient
         return (connection, transaction);
     }
 
-    public IEnumerable<AgendaHeader> GetAgendasList(
+    public IEnumerable<AgendaResponse> GetAgendasList(
         int count = int.MaxValue, int offset = 0, SqlConnection connection = null, SqlTransaction transaction = null)
     {
-        connection ??= new SqlConnection(_connectionString);
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
         
-        if (connection.State != ConnectionState.Open)
-        {
-            connection.Open();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[agenda_list]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            // command.Parameters.AddWithValue("count", count);
+            // command.Parameters.AddWithValue("offset", offset);
+
+            var reader = command.ExecuteReader();
+
+            var idOrdinal = reader.GetOrdinal("id");
+            var titleOrdinal = reader.GetOrdinal("title");
+            var descriptionOrdinal = reader.GetOrdinal("description");
+            var startDateOrdinal = reader.GetOrdinal("start_date");
+            var endDateOrdinal = reader.GetOrdinal("end_date");
+
+            while (reader.Read())
+            {
+                var id = reader.GetInt32(idOrdinal);
+                var title = reader.GetString(titleOrdinal);
+                var description = reader.GetStringSafe(descriptionOrdinal);
+                var startDate = reader.GetDateTimeOffsetSafe(startDateOrdinal);
+                var endDate = reader.GetDateTimeOffsetSafe(endDateOrdinal);
+
+                yield return new AgendaResponse()
+                {
+                    Id = id,
+                    Title = title,
+                    Description = description,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                
+                };
+            }
         }
-
-        using var command = new SqlCommand("[dbo].[agenda_list]", connection);
-        command.CommandType = CommandType.StoredProcedure;
-
-        if (transaction != null)
+        finally
         {
-            command.Transaction = transaction;
-        }
-
-        // command.Parameters.AddWithValue("count", count);
-        // command.Parameters.AddWithValue("offset", offset);
-
-        var reader = command.ExecuteReader();
-
-        var idOrdinal = reader.GetOrdinal("id");
-        var titleOrdinal = reader.GetOrdinal("title");
-        var descriptionOrdinal = reader.GetOrdinal("description");
-        var isActiveOrdinal = reader.GetOrdinal("active");
-
-        while (reader.Read())
-        {
-            var id = reader.GetInt32(idOrdinal);
-            var title = reader.GetString(titleOrdinal);
-            var description = reader.GetStringSafe(descriptionOrdinal);
-            var isActive = reader.GetBoolean(isActiveOrdinal);
-
-            yield return new AgendaHeader(id, title, description, isActive);
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
         }
     }
 
-    public AgendaHeader GetAgendaInfo(int agendaId, SqlConnection connection = null, SqlTransaction transaction = null)
+    public AgendaResponse GetAgendaInfo(int agendaId, SqlConnection connection = null, SqlTransaction transaction = null)
     {
-        connection ??= new SqlConnection(_connectionString);
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
         
-        if (connection.State != ConnectionState.Open)
-        {
-            connection.Open();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[agenda_get]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("id", agendaId);
+
+            var reader = command.ExecuteReader();
+
+            var idOrdinal = reader.GetOrdinal("id");
+            var titleOrdinal = reader.GetOrdinal("title");
+            var descriptionOrdinal = reader.GetOrdinal("description");
+            var startDateOrdinal = reader.GetOrdinal("start_date");
+            var endDateOrdinal = reader.GetOrdinal("end_date");
+
+            if (reader.Read())
+            {
+                var id = reader.GetInt32(idOrdinal);
+                var title = reader.GetString(titleOrdinal);
+                var description = reader.GetStringSafe(descriptionOrdinal);
+                var startDate = reader.GetDateTimeOffsetSafe(startDateOrdinal);
+                var endDate = reader.GetDateTimeOffsetSafe(endDateOrdinal);
+
+                return new AgendaResponse()
+                {
+                    Id = id,
+                    Title = title,
+                    Description = description,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                
+                };
+            }
+
+            return null;
         }
-
-        using var command = new SqlCommand("[dbo].[agenda_get]", connection);
-        command.CommandType = CommandType.StoredProcedure;
-
-        if (transaction != null)
+        finally
         {
-            command.Transaction = transaction;
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
         }
-
-        command.Parameters.AddWithValue("id", agendaId);
-
-        var reader = command.ExecuteReader();
-
-        var idOrdinal = reader.GetOrdinal("id");
-        var titleOrdinal = reader.GetOrdinal("title");
-        var descriptionOrdinal = reader.GetOrdinal("description");
-        var isActiveOrdinal = reader.GetOrdinal("active");
-
-        if (reader.Read())
-        {
-            var id = reader.GetInt32(idOrdinal);
-            var title = reader.GetString(titleOrdinal);
-            var description = reader.GetStringSafe(descriptionOrdinal);
-            var isActive = reader.GetBoolean(isActiveOrdinal);
-
-            return new AgendaHeader(id, title, description, isActive);
-        }
-
-        return null;
     }
 
     public IEnumerable<Speaker> GetSpeakersByAgenda(int agendaId, SqlConnection connection = null, SqlTransaction transaction = null)
     {
-        connection ??= new SqlConnection(_connectionString);
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
         
-        if (connection.State != ConnectionState.Open)
-        {
-            connection.Open();
-        }
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
-        using var command = new SqlCommand("[dbo].[speakers_get]", connection);
-        command.CommandType = CommandType.StoredProcedure;
+            using var command = new SqlCommand("[dbo].[speakers_get]", connection);
+            command.CommandType = CommandType.StoredProcedure;
 
-        if (transaction != null)
-        {
-            command.Transaction = transaction;
-        }
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
 
-        command.Parameters.AddWithValue("agenda_id", agendaId);
+            command.Parameters.AddWithValue("agenda_id", agendaId);
 
-        using var reader = command.ExecuteReader();
+            using var reader = command.ExecuteReader();
 
-        var userIdOrdinal = reader.GetOrdinal("id");
-        var firstNameOrdinal = reader.GetOrdinal("first_name");
-        var lastNameOrdinal = reader.GetOrdinal("last_name");
+            var userIdOrdinal = reader.GetOrdinal("id");
+            var firstNameOrdinal = reader.GetOrdinal("first_name");
+            var lastNameOrdinal = reader.GetOrdinal("last_name");
         
-        while (reader.Read())
-        {
-            var userId = reader.GetInt32(userIdOrdinal);
-            var firstName = reader.GetString(firstNameOrdinal);
-            var lastName = reader.GetString(lastNameOrdinal);
+            while (reader.Read())
+            {
+                var userId = reader.GetInt32(userIdOrdinal);
+                var firstName = reader.GetString(firstNameOrdinal);
+                var lastName = reader.GetString(lastNameOrdinal);
 
-            yield return new Speaker(userId, firstName, lastName);
+                yield return new Speaker(userId, firstName, lastName);
+            }
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
         }
     }
-
-    public int AddAgenda(AgendaHeader header, SqlConnection connection = null, SqlTransaction transaction = null)
+    
+    public IEnumerable<int> GetPollsByAgenda(int agendaId, SqlConnection connection = null, SqlTransaction transaction = null)
     {
-        connection ??= new SqlConnection(_connectionString);
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
         
-        if (connection.State != ConnectionState.Open)
-        {
-            connection.Open();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_by_agenda]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("agenda_id", agendaId);
+
+            using var reader = command.ExecuteReader();
+
+            var userIdOrdinal = reader.GetOrdinal("id");
+
+            while (reader.Read())
+            {
+                var pollId = reader.GetInt32(userIdOrdinal);
+
+                yield return pollId;
+            }
         }
-
-        using var command = new SqlCommand("[dbo].[agenda_add]", connection);
-        command.CommandType = CommandType.StoredProcedure;
-
-        if (transaction != null)
+        finally
         {
-            command.Transaction = transaction;
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
         }
-
-        command.Parameters.AddWithValue("title", header.Title);
-        command.Parameters.AddWithValue("description", header.Description);
-
-        using var reader = command.ExecuteReader();
-        
-        var idOrdinal = reader.GetOrdinal("id");
-
-        if (reader.Read())
-        {
-            var agendaId = reader.GetInt32(idOrdinal);
-
-            return agendaId;
-        }
-
-        return 0;
     }
 
-    public void UpdateAgenda(int id, string title, string description, bool active,
+    public int CreateAgenda(UpdateAgendaRequest req, SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[agenda_add]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("title", req.Title);
+            command.Parameters.AddWithValue("description", req.Description);
+            command.Parameters.AddWithValue("start_date", req.StartDate);
+            command.Parameters.AddWithValue("end_date", req.EndDate);
+
+            using var reader = command.ExecuteReader();
+        
+            var idOrdinal = reader.GetOrdinal("id");
+
+            if (reader.Read())
+            {
+                var agendaId = reader.GetInt32(idOrdinal);
+
+                return agendaId;
+            }
+
+            return 0;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+
+    public void UpdateAgenda(int id, string title, string description,
+        DateTimeOffset startDate, DateTimeOffset endDate, bool active,
         SqlConnection connection = null, SqlTransaction transaction = null)
     {
-        connection ??= new SqlConnection(_connectionString);
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
         
-        if (connection.State != ConnectionState.Open)
-        {
-            connection.Open();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[agenda_edit]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("id", id);
+            command.Parameters.AddWithValue("title", title);
+            command.Parameters.AddWithValue("description", description);
+            command.Parameters.AddWithValue("start_date", startDate);
+            command.Parameters.AddWithValue("end_date", endDate);
+            command.Parameters.AddWithValue("active", active);
+
+            command.ExecuteNonQuery();
         }
-
-        using var command = new SqlCommand("[dbo].[agenda_edit]", connection);
-        command.CommandType = CommandType.StoredProcedure;
-
-        if (transaction != null)
+        finally
         {
-            command.Transaction = transaction;
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
         }
-
-        command.Parameters.AddWithValue("id", id);
-        command.Parameters.AddWithValue("title", title);
-        command.Parameters.AddWithValue("description", description);
-        command.Parameters.AddWithValue("active", active);
-
-        command.ExecuteNonQuery();
     }
 
-    public void UpdateAgendaSessions(int agendaId, IEnumerable<Session> sessions,
+    public void SetPollAgenda(int agendaId, int pollId,
         SqlConnection connection = null, SqlTransaction transaction = null)
     {
-        connection ??= new SqlConnection(_connectionString);
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
         
-        if (connection.State != ConnectionState.Open)
-        {
-            connection.Open();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_agenda_set]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("agenda_id", agendaId);
+            command.Parameters.AddWithValue("poll_id", pollId);
+
+            command.ExecuteNonQuery();
         }
-
-        var values = string.Join(", ", sessions.Select(x => $"({agendaId}, '{x.StartDate}', '{x.EndDate}')"));
-
-        var text = @$"
-CREATE TABLE #MyTempTable  
-    (
-		agenda_id INT,
-        start_date datetimeoffset(7),
-        end_date datetimeoffset(7)
-    );
-
-INSERT INTO #MyTempTable (agenda_id, start_date, end_date)
-    VALUES {values};
-
-MERGE [Session] as s
-    USING (SELECT agenda_id, start_date, end_date FROM #MyTempTable) as mtt (agenda_id, start_date, end_date)  
-    ON (s.agenda_id = mtt.agenda_id AND s.start_date = mtt.start_date)  
-    WHEN MATCHED THEN
-        UPDATE SET
-            start_date = mtt.start_date,
-            end_date = mtt.end_date
-    WHEN NOT MATCHED by target THEN  
-        INSERT (agenda_id, start_date, end_date)  
-        VALUES (agenda_id, start_date, end_date)
-	WHEN NOT MATCHED by source AND s.agenda_id = (SELECT agenda_id FROM #MyTempTable mtt WHERE agenda_id = mtt.agenda_id) THEN  
-        DELETE;
-
-DROP TABLE #MyTempTable;
-"; // TODO: Support multiply sessions
-
-        using var command = new SqlCommand(text, connection);
-        command.CommandType = CommandType.Text;
-
-        if (transaction != null)
+        finally
         {
-            command.Transaction = transaction;
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
         }
-
-        command.ExecuteNonQuery();
     }
 
     public void UpdateSpeakers(int agendaId, IEnumerable<int> speakers,
         SqlConnection connection = null, SqlTransaction transaction = null)
     {
-        connection ??= new SqlConnection(_connectionString);
-        
-        if (connection.State != ConnectionState.Open)
+        var connectionNeedClose = connection == null;
+        try
         {
-            connection.Open();
-        }
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
-        var values = string.Join(", ", speakers.Select(x => $"({agendaId}, {x})"));
+            var values = string.Join(", ", speakers?.Select(x => $"({agendaId}, {x})") ?? Array.Empty<string>());
+            if (string.IsNullOrWhiteSpace(values))
+            {
+                return;
+            }
 
-        var text = @$"
-CREATE TABLE #MyTempTable  
-    (
-		agenda_id INT,
-        speaker_id INT
-    );
+            var text = @$"
+DELETE FROM AgendaSpeaker
+    WHERE @agenda_id = agenda_id
 
-INSERT INTO #MyTempTable (agenda_id, speaker_id)
+INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
     VALUES {values};
 
-MERGE [AgendaSpeaker] as s
-    USING (SELECT agenda_id, speaker_id FROM #MyTempTable) as mtt (agenda_id, speaker_id)  
-    ON (s.agenda_id = mtt.agenda_id AND s.speaker_id = mtt.speaker_id)
-    WHEN MATCHED THEN
-        UPDATE SET
-            speaker_id = mtt.speaker_id
-    WHEN NOT MATCHED by target THEN  
-        INSERT (agenda_id, speaker_id)  
-        VALUES (agenda_id, speaker_id)
-	WHEN NOT MATCHED by source AND s.agenda_id = (SELECT agenda_id FROM #MyTempTable mtt WHERE agenda_id = mtt.agenda_id) THEN  
-        DELETE;
+";
 
-DROP TABLE #MyTempTable;
-"; // TODO: Support multiply speakers 
+            using var command = new SqlCommand(text, connection);
+            command.CommandType = CommandType.Text;
+            command.Parameters.AddWithValue("@agenda_id", agendaId);
 
-        using var command = new SqlCommand(text, connection);
-        command.CommandType = CommandType.Text;
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
 
-        if (transaction != null)
-        {
-            command.Transaction = transaction;
+            command.ExecuteNonQuery();
         }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
 
-        command.ExecuteNonQuery();
+    public IEnumerable<PollResponse> GetPolls(SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_list]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+        
+            using var reader = command.ExecuteReader();
+
+            var pollIdOrdinal = reader.GetOrdinal("id");
+            var nameOrdinal = reader.GetOrdinal("name");
+            var textOrdinal = reader.GetOrdinal("text");
+            var agendaIdOrdinal = reader.GetOrdinal("agenda_id");
+            var multiChoiceOrdinal = reader.GetOrdinal("multi_choice");
+
+            while (reader.Read())
+            {
+                var pollId = reader.GetInt32(pollIdOrdinal);
+                var name = reader.GetString(nameOrdinal);
+                var text = reader.GetStringSafe(textOrdinal);
+                var agendaId = reader.GetInt32Safe(agendaIdOrdinal);
+                var multiChoice = reader.GetBoolean(multiChoiceOrdinal);
+
+                yield return new PollResponse
+                {
+                    Id = pollId,
+                    Name = name,
+                    Text = text,
+                    AgendaId = agendaId,
+                    MultiChoice = multiChoice
+                };
+            }
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+
+    public IEnumerable<OptionInfo> GetOptionsInfo(int userId, int optionId = 0, SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        throw new NotImplementedException();
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_options]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.AddWithValue("user_id", userId);
+            command.Parameters.AddWithValue("option_id", optionId);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+        
+            using var reader = command.ExecuteReader();
+
+            var optionIdOrdinal = reader.GetOrdinal("id");
+            var pollIdOrdinal = reader.GetOrdinal("poll_id");
+            var textOrdinal = reader.GetOrdinal("text");
+            var countOrdinal = reader.GetOrdinal("count");
+            var isChosenOrdinal = reader.GetOrdinal("is_chosen");
+
+            while (reader.Read())
+            {
+                // var pollId = reader.GetInt32(optionIdOrdinal);
+                // var name = reader.GetString(nameOrdinal);
+                // var text = reader.GetStringSafe(textOrdinal);
+                // var multiChoice = reader.GetBoolean(multiChoiceOrdinal);
+                //
+                // yield return new PollResponse
+                // {
+                //     Id = pollId,
+                //     Name = name,
+                //     Text = text,
+                //     MultiChoice = multiChoice
+                // };
+            }
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+
+    public IEnumerable<PollOptionResponse> GetOptionsByPoll(int pollId, int userId,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_options]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.AddWithValue("user_id", userId);
+            command.Parameters.AddWithValue("poll_id", pollId);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+        
+            using var reader = command.ExecuteReader();
+
+            var idOrdinal = reader.GetOrdinal("id");
+            var textOrdinal = reader.GetOrdinal("text");
+            var countOrdinal = reader.GetOrdinal("cnt");
+            var checkedByUserOrdinal = reader.GetOrdinal("checked_by_user");
+
+            while (reader.Read())
+            {
+                var id = reader.GetInt32(idOrdinal);
+                var text = reader.GetStringSafe(textOrdinal);
+                var count = reader.GetInt32(countOrdinal);
+                var checkedByUser = reader.GetBoolean(checkedByUserOrdinal);
+
+                yield return new PollOptionResponse()
+                {
+                    Id = id,
+                    Text = text,
+                    Count = count,
+                    IsChosen = checkedByUser
+                };
+            }
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+
+    public PollResponse GetPollById(int pollId,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_get]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.AddWithValue("poll_id", pollId);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+        
+            using var reader = command.ExecuteReader();
+
+            var pollIdOrdinal = reader.GetOrdinal("id");
+            var nameOrdinal = reader.GetOrdinal("name");
+            var textOrdinal = reader.GetOrdinal("text");
+            var agendaIdOrdinal = reader.GetOrdinal("agenda_id");
+            var multiChoiceOrdinal = reader.GetOrdinal("multi_choice");
+
+            if (reader.Read())
+            {
+                var id = reader.GetInt32(pollIdOrdinal);
+                var name = reader.GetString(nameOrdinal);
+                var text = reader.GetStringSafe(textOrdinal);
+                var agendaId = reader.GetInt32Safe(agendaIdOrdinal);
+                var multiChoice = reader.GetBoolean(multiChoiceOrdinal);
+
+                return new PollResponse
+                {
+                    Id = id,
+                    Name = name,
+                    Text = text,
+                    AgendaId = agendaId,
+                    MultiChoice = multiChoice
+                };
+            }
+
+            return null;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+
+    public int CreatePoll(string name, string text, bool multiChoice,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_add]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("name", name);
+            command.Parameters.AddWithValue("text", text);
+            command.Parameters.AddWithValue("multi_choice", multiChoice);
+
+            using var reader = command.ExecuteReader();
+        
+            var idOrdinal = reader.GetOrdinal("id");
+
+            if (reader.Read())
+            {
+                var agendaId = reader.GetInt32(idOrdinal);
+
+                return agendaId;
+            }
+
+            return 0;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+
+    public int AddOption(int pollId, string optionText,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_option_add]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("poll_id", pollId);
+            command.Parameters.AddWithValue("text", optionText);
+
+            using var reader = command.ExecuteReader();
+        
+            var idOrdinal = reader.GetOrdinal("id");
+
+            if (reader.Read())
+            {
+                var agendaId = reader.GetInt32(idOrdinal);
+
+                return agendaId;
+            }
+
+            return 0;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+
+    public void VotePollOptions(int userId, int optionId,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_option_vote]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("option_id", optionId);
+            command.Parameters.AddWithValue("user_id", userId);
+            
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
+    public void UnvotePollOptions(int userId, int optionId,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_option_unvote]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("option_id", optionId);
+            command.Parameters.AddWithValue("user_id", userId);
+            
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+
+    public void DeletePoll(int pollId,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[poll_delete]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.Parameters.AddWithValue("poll_id", pollId);
+            
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
     }
 }

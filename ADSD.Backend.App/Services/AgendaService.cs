@@ -13,37 +13,62 @@ public class AgendaService
         _appDbClient = appDbClient;
     }
 
-    public IEnumerable<AgendaHeader> GetAgendasList(int count = int.MaxValue, int offset = 0)
+    public IEnumerable<AgendaResponse> GetAgendasList(int count = int.MaxValue, int offset = 0)
     {
-        return _appDbClient.GetAgendasList(count, offset);
-    }
-
-    public AgendaDetails GetAgendaInfo(int id)
-    {
-        var header =  _appDbClient.GetAgendaInfo(id);
-
-        if (header == null)
+        var agendas = _appDbClient.GetAgendasList(count, offset).ToList();
+        foreach (var agenda in agendas)
         {
-            return null;
+            agenda.Speakers = _appDbClient
+                .GetSpeakersByAgenda(agenda.Id)
+                .Select(x => x.Id)
+                .ToList();
+            agenda.Polls = _appDbClient
+                .GetPollsByAgenda(agenda.Id)
+                .ToList();
         }
 
-        var speakers = _appDbClient.GetSpeakersByAgenda(header.Id).ToList();
-
-        var details = new AgendaDetails(header, speakers);
-
-        return details;
+        return agendas;
     }
 
-
-    public int AddAgenda(AgendaHeader header)
+    public AgendaResponse GetAgendaInfo(int id)
     {
-       return _appDbClient.AddAgenda(header);
+        var agenda = _appDbClient.GetAgendaInfo(id);
+        agenda.Polls = _appDbClient.GetPollsByAgenda(agenda.Id).ToList();
+        agenda.Speakers = _appDbClient
+            .GetSpeakersByAgenda(agenda.Id)
+            .Select(x => x.Id)
+            .ToList();
+        return agenda;
+    }
+
+    public int CreateAgenda(UpdateAgendaRequest request)
+    {
+       var agendaId = _appDbClient.CreateAgenda(request);
+
+       if (request.Speakers != null)
+       {
+           _appDbClient.UpdateSpeakers(agendaId, request.Speakers);
+       }
+       
+       if (request.Polls != null)
+       {
+           foreach (var pollId in request.Polls)
+           {
+               _appDbClient.SetPollAgenda(agendaId, pollId);
+           }
+       }
+       
+       return agendaId;
     }
 
     public void UpdateAgenda(int id, UpdateAgendaRequest updateAgendaRequest)
     {
-        _appDbClient.UpdateAgenda(id, updateAgendaRequest.Title, updateAgendaRequest.Description, updateAgendaRequest.Active);
-        _appDbClient.UpdateAgendaSessions(id, updateAgendaRequest.Sessions);
+        _appDbClient.UpdateAgenda(id,
+            updateAgendaRequest.Title,
+            updateAgendaRequest.Description,
+            updateAgendaRequest.StartDate,
+            updateAgendaRequest.EndDate,
+            updateAgendaRequest.Active);
         _appDbClient.UpdateSpeakers(id, updateAgendaRequest.Speakers);
     }
 }
