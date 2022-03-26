@@ -1,4 +1,7 @@
-﻿using ADSD.Backend.App.Clients;
+﻿using System.Security.Claims;
+using ADSD.Backend.App.Clients;
+using ADSD.Backend.App.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ADSD.Backend.App.Controllers;
@@ -15,19 +18,33 @@ public class HealthController : Controller
     }
     
     [HttpGet("check/")]
-    public async Task<IActionResult> CheckAuth()
+    [Authorize]
+    public IActionResult CheckAuth()
     {
-        var authData = await _sessionTokenDbClient.GetUserByToken(Request.Headers.Authorization);
+        var currentUser = HttpContext.User;
 
-        if (authData != null)
+        if (currentUser.HasClaim(x => x.Type == ClaimsIdentity.DefaultRoleClaimType))
         {
-            return Json(new
+            var roles = currentUser.Claims.First(c => c.Type == ClaimsIdentity.DefaultRoleClaimType).Value;
+            if (roles.Contains(UserRole.Admin.ToString()))
             {
-                Health = "OK",
-                UserName = authData.UserName,
-            });
+                return Json(new
+                {
+                    Message = "Success admin",
+                    UserId = currentUser.Claims.FirstOrDefault(c => c.Type == "id")?.Value,
+                    Roles = roles.Split(',')
+                });
+            }
+            else if (roles.Contains(UserRole.User.ToString()))
+            {
+                return Json(new
+                {
+                    Message = "Success user",
+                    UserId = currentUser.Claims.FirstOrDefault(c => c.Type == "id")?.Value,
+                    Roles = roles.Split(',')
+                });
+            }
         }
-
         return Unauthorized();
     }
     

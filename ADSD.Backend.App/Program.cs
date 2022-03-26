@@ -1,8 +1,9 @@
-using System.Net;
 using ADSD.Backend.App;
 using ADSD.Backend.App.Clients;
+using ADSD.Backend.App.Models;
 using ADSD.Backend.App.Services;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,15 +17,37 @@ builder.Services.AddMemoryCache(item => { item.SizeLimit = 1000; });
 builder.Services.AddScoped<SessionTokenDbClient>();
 builder.Services.AddScoped<BasicAuthorizationHandler>();
 builder.Services.AddScoped<AgendaService>();
+builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PollService>();
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AppDbClient>();
-// builder.Services.AddScoped<IAuthorizationHandler, BasicAuthorizationHandler>();
-//
-// builder.Services.AddAuthorization(options =>
-// {
-//     options.AddPolicy("basic", 
-//         policy => policy.Requirements.Add(new BasicAuthorizationHandler.BasicAuthorizationRequirement()));
-// });
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            // укзывает, будет ли валидироваться издатель при валидации токена
+            ValidateIssuer = true,
+            // строка, представляющая издателя
+            ValidIssuer = AuthOptions.Issuer,
+
+            // будет ли валидироваться потребитель токена
+            ValidateAudience = true,
+            // установка потребителя токена
+            ValidAudience = AuthOptions.Audience,
+            // будет ли валидироваться время существования
+            ValidateLifetime = true,
+
+            // установка ключа безопасности
+            IssuerSigningKey = AuthOptions.GetSymmetricSecurityKey(),
+            // валидация ключа безопасности
+            ValidateIssuerSigningKey = true,
+        };
+    });
+builder.Services.AddControllersWithViews();
+builder.Services.AddMvc();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -36,15 +59,11 @@ builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
-app.UseAuthentication();
 app.UseRouting();
-// app.UseAuthorization();
+app.UseAuthorization();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();

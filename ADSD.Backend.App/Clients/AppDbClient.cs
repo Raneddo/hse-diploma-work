@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Text;
 using ADSD.Backend.App.Json;
 using ADSD.Backend.App.Models;
 using ADSD.Backend.Common;
@@ -825,5 +826,314 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
                 connection?.Close();
             }
         }
+    }
+
+    public IEnumerable<UserBaseInfo> GetUsers(SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[user_baseinfo_list]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            using var reader = command.ExecuteReader();
+        
+            var idOrdinal = reader.GetOrdinal("id");
+            var fnOrdinal = reader.GetOrdinal("first_name");
+            var lnOrdinal = reader.GetOrdinal("last_name");
+            var fullNameOrdinal = reader.GetOrdinal("full_name");
+            var prefixOrdinal = reader.GetOrdinal("prefix");
+            var emailOrdinal = reader.GetOrdinal("email");
+            var organizationOrdinal = reader.GetOrdinal("organization_name");
+            var appStatusOrdinal = reader.GetOrdinal("application_status");
+            var isActiveOrdinal = reader.GetOrdinal("is_active");
+
+            while (reader.Read())
+            {
+                var userId = reader.GetInt32(idOrdinal);
+                var prefix = reader.GetStringSafe(prefixOrdinal);
+                var firstName = reader.GetStringSafe(fnOrdinal);
+                var lastName = reader.GetStringSafe(lnOrdinal);
+                var fullName = reader.GetStringSafe(fullNameOrdinal)
+                    ?? NamesToFullName(prefix, firstName, lastName);
+                var organizationName = reader.GetStringSafe(organizationOrdinal);
+                var email = reader.GetStringSafe(emailOrdinal);
+                var applicationStatus = reader.GetStringSafe(appStatusOrdinal);
+                var isActive = reader.GetBoolean(isActiveOrdinal);
+
+                yield return new UserBaseInfo()
+                {
+                    Id = userId,
+                    Prefix = prefix,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    FullName = fullName,
+                    Organization = organizationName,
+                    Email = email,
+                    IsActive = isActive,
+                    ApplicationStatus = applicationStatus
+                };
+            }
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
+    public UserFullInfo GetUserById(int id,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[user_get_by_id]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@id", id);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            using var reader = command.ExecuteReader();
+        
+            var idOrdinal = reader.GetOrdinal("id");
+            var fnOrdinal = reader.GetOrdinal("first_name");
+            var lnOrdinal = reader.GetOrdinal("last_name");
+            var fullNameOrdinal = reader.GetOrdinal("full_name");
+            var prefixOrdinal = reader.GetOrdinal("prefix");
+            var emailOrdinal = reader.GetOrdinal("email");
+            var organizationOrdinal = reader.GetOrdinal("organization_name");
+            var appStatusOrdinal = reader.GetOrdinal("application_status");
+            var isActiveOrdinal = reader.GetOrdinal("is_active");
+
+            if (reader.Read())
+            {
+                var userId = reader.GetInt32(idOrdinal);
+                var prefix = reader.GetStringSafe(prefixOrdinal);
+                var firstName = reader.GetStringSafe(fnOrdinal);
+                var lastName = reader.GetStringSafe(lnOrdinal);
+                var fullName = reader.GetStringSafe(fullNameOrdinal)
+                    ?? NamesToFullName(prefix, firstName, lastName);
+                var organizationName = reader.GetStringSafe(organizationOrdinal);
+                var email = reader.GetStringSafe(emailOrdinal);
+                var applicationStatus = reader.GetStringSafe(appStatusOrdinal);
+                var isActive = reader.GetBoolean(isActiveOrdinal);
+
+                return new UserFullInfo()
+                {
+                    Id = userId,
+                    Prefix = prefix,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    FullName = fullName,
+                    Organization = organizationName,
+                    Email = email,
+                    IsActive = isActive,
+                    ApplicationStatus = applicationStatus
+                };
+            }
+
+            return null;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection.Close();
+            }
+        }
+    }
+    
+    public int CreateUser(UserFullInfo userFullInfo,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[user_add]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            if (string.IsNullOrWhiteSpace(userFullInfo.FullName))
+            {
+                userFullInfo.FullName =
+                    NamesToFullName(userFullInfo.Prefix, userFullInfo.FirstName, userFullInfo.LastName);
+            }
+            
+            command.Parameters.AddWithValue("@id", userFullInfo.Id);
+            command.Parameters.AddWithValue("@first_name", userFullInfo.FirstName);
+            command.Parameters.AddWithValue("@last_name", userFullInfo.LastName);
+            command.Parameters.AddWithValue("@full_name", userFullInfo.FullName);
+            command.Parameters.AddWithValue("@prefix", userFullInfo.Prefix);
+            command.Parameters.AddWithValue("@email", userFullInfo.Email);
+            command.Parameters.AddWithValue("@organization_name", userFullInfo.Organization);
+            command.Parameters.AddWithValue("@application_status", userFullInfo.ApplicationStatus);
+            command.Parameters.AddWithValue("@is_active", userFullInfo.IsActive);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            using var reader = command.ExecuteReader();
+        
+            var idOrdinal = reader.GetOrdinal("id");
+
+            if (reader.Read())
+            {
+                var userId = reader.GetInt32(idOrdinal);
+
+                return userId;
+            }
+
+            return 0;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
+    public void UpdateUser(int id, UserFullInfo userFullInfo,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[user_update]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+            
+            if (string.IsNullOrWhiteSpace(userFullInfo.FullName))
+            {
+                userFullInfo.FullName =
+                    NamesToFullName(userFullInfo.Prefix, userFullInfo.FirstName, userFullInfo.LastName);
+            }
+
+            command.Parameters.AddWithValue("@id", id);
+            command.Parameters.AddWithValue("@first_name", userFullInfo.FirstName);
+            command.Parameters.AddWithValue("@last_name", userFullInfo.LastName);
+            command.Parameters.AddWithValue("@full_name", userFullInfo.FullName);
+            command.Parameters.AddWithValue("@prefix", userFullInfo.Prefix);
+            command.Parameters.AddWithValue("@email", userFullInfo.Email);
+            command.Parameters.AddWithValue("@organization_name", userFullInfo.Organization);
+            command.Parameters.AddWithValue("@application_status", userFullInfo.ApplicationStatus);
+            command.Parameters.AddWithValue("@is_active", userFullInfo.IsActive);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
+    public int GetUserIdByCredentials(string login, string passHash)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[login]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+        
+        cmd.Parameters.AddWithValue("login", login);
+        cmd.Parameters.AddWithValue("pass_hash", passHash);
+
+        using var reader = cmd.ExecuteReader();
+
+        var userIdOrdinal = reader.GetOrdinal("user_id");
+
+        if (!reader.Read())
+            return 0;
+        
+        var userId = reader.GetInt32(userIdOrdinal);
+        return userId;
+    }
+
+    public IEnumerable<UserRole> GetRolesByUserId(int userId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[role_by_user]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@id", userId);
+
+        using var reader = cmd.ExecuteReader();
+
+        var groupOrdinal = reader.GetOrdinal("group");
+
+        while (reader.Read())
+        {
+            yield return (UserRole)reader.GetInt32(groupOrdinal);
+        }
+    }
+
+    private static string NamesToFullName(string prefix, string firstName, string lastName)
+    {
+        var fullNameList = new List<string>();
+        if (!string.IsNullOrWhiteSpace(prefix))
+        {
+            fullNameList.Add(prefix);
+        }
+        if (!string.IsNullOrWhiteSpace(firstName))
+        {
+            fullNameList.Add(firstName);
+        }
+        if (!string.IsNullOrWhiteSpace(lastName))
+        {
+            fullNameList.Add(lastName);
+        }
+
+        return string.Join(" ", fullNameList);
     }
 }

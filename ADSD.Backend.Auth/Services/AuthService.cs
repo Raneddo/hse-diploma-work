@@ -19,7 +19,7 @@ namespace ADSD.Backend.Auth.Services
             _userCredentialsDbClient = userCredentialsDbClient;
         }
         
-        public async Task<UserInfo> RegisterUserByLink(string link, UserInfo userInfo)
+        public Task<UserInfo> RegisterUserByLink(string link, UserInfo userInfo)
         {
             var userId = _linkDbClient.GetUserIdByLink(link);
             if (!userId.HasValue)
