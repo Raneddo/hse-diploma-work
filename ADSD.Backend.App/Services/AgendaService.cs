@@ -1,6 +1,5 @@
 ﻿using ADSD.Backend.App.Clients;
 using ADSD.Backend.App.Json;
-using ADSD.Backend.App.Models;
 
 namespace ADSD.Backend.App.Services;
 
@@ -70,5 +69,10 @@ public class AgendaService
             updateAgendaRequest.EndDate,
             updateAgendaRequest.Active);
         _appDbClient.UpdateSpeakers(id, updateAgendaRequest.Speakers);
+    }
+
+    public void DeleteAgenda(int id)
+    {
+        _appDbClient.DeleteAgenda(id);
     }
 }

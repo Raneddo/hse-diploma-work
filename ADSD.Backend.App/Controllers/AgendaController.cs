@@ -1,5 +1,4 @@
 ﻿using ADSD.Backend.App.Json;
-using ADSD.Backend.App.Models;
 using ADSD.Backend.App.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,9 +16,9 @@ public class AgendaController : Controller
     }
     
     [HttpGet]
-    public JsonResult GetAgendasList(int count = int.MaxValue, int offset = 0)
+    public JsonResult GetAgendasList()
     {
-        return Json(_agendaService.GetAgendasList(count, offset));
+        return Json(_agendaService.GetAgendasList());
     }
 
     [HttpGet("{id:int}")]
@@ -44,40 +43,10 @@ public class AgendaController : Controller
         return Json(new {Id = id});
     }
 
-    [HttpGet("{agendaId:int}/poll")]
-    public JsonResult GetPolls([FromRoute] int agendaId)
+    [HttpDelete("{id:int}")]
+    public IActionResult DeleteAgenda([FromRoute] int id)
     {
-        return Json(new
-        {
-            Id = 1,
-            Text = "Poll text",
-            Options = new[]
-            {
-                new
-                {
-                    Id = 1,
-                    Text = "Option 1",
-                    Count = 4
-                },
-                new
-                {
-                    Id = 2,
-                    Text = "Option 2",
-                    Count = 1
-                }
-            }
-        });
-    }
-
-    [HttpPost("{agendaId:int}/poll/{pollId:int}")]
-    public JsonResult AddPoll([FromRoute] int agendaId, [FromRoute] int pollId)
-    {
-        throw new NotImplementedException();
-    }
-    
-    [HttpPut("{agendaId:int}/poll/{pollId:int}")]
-    public JsonResult UpdatePoll([FromRoute] int agendaId, int pollId)
-    {
-        throw new NotImplementedException();
+        _agendaService.DeleteAgenda(id);
+        return Ok();
     }
 }

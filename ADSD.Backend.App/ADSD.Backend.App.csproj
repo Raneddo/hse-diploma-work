@@ -16,4 +16,10 @@
       <ProjectReference Include="..\ADSD.Backend.Common\ADSD.Backend.Common.csproj" />
     </ItemGroup>
 
+    <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
+        <Copy SourceFiles="Dockerfile" DestinationFolder="$(OutDir)" />
+    </Target>
+    <Target Name="CopyCustomContentOnPublish" AfterTargets="Publish">
+        <Copy SourceFiles="Dockerfile" DestinationFolder="$(PublishDir)" />
+    </Target>
 </Project>

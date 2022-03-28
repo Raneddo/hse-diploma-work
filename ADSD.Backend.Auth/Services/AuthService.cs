@@ -4,7 +4,6 @@ using System.Text;
 using System.Threading.Tasks;
 using ADSD.Backend.Auth.Clients.DbClients;
 using ADSD.Backend.Auth.Models;
-using Microsoft.AspNetCore.Identity;
 
 namespace ADSD.Backend.Auth.Services
 {

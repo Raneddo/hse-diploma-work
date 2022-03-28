@@ -1,5 +1,8 @@
+using ADSD.Backend.App.Helpers;
 using ADSD.Backend.App.Json;
 using ADSD.Backend.App.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ADSD.Backend.App.Controllers;
@@ -8,25 +11,27 @@ namespace ADSD.Backend.App.Controllers;
 [Route("/api/[controller]/")]
 public class PollController : Controller
 {
-    private readonly AgendaService _agendaService;
     private readonly PollService _pollService;
 
-    public PollController(AgendaService agendaService, PollService pollService)
+    public PollController(PollService pollService)
     {
-        _agendaService = agendaService;
         _pollService = pollService;
     }
     
     [HttpGet]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
     public IActionResult GetPolls()
     {
-        return Json(_pollService.GetPolls(userId: 1));
+        var userId = User.GetUserId() ?? 0;
+        return Json(_pollService.GetPolls(userId: userId));
     }
 
     [HttpGet("{id:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
     public IActionResult GetPoll([FromRoute] int id)
     {
-        var poll = _pollService.GetPollById(id, userId: 1);
+        var userId = User.GetUserId() ?? 0;
+        var poll = _pollService.GetPollById(id, userId);
         if (poll != null)
         {
             return Json(poll);
@@ -48,17 +53,31 @@ public class PollController : Controller
         return Ok();
     }
 
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
     [HttpPost("{id:int}/vote")]
     public IActionResult Vote([FromRoute] int id, [FromBody] List<int> options)
     {
-        _pollService.VotePollOptions(id, 1, options);
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+        
+        _pollService.VotePollOptions(id, userId.Value, options);
         return Ok();
     }
     
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
     [HttpDelete("{id:int}/vote")]
     public IActionResult Unvote([FromRoute] int id)
     {
-        _pollService.UnvotePollOptions(id, 1);
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+        
+        _pollService.UnvotePollOptions(id, userId.Value);
         return Ok();
     }
 }

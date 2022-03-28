@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using ADSD.Backend.App.Clients;
+using ADSD.Backend.App.Helpers;
 
 namespace ADSD.Backend.App.Services
 {
@@ -14,11 +15,21 @@ namespace ADSD.Backend.App.Services
 
         public int Login(string userName, string password)
         {
-            var passHash = Helpers.SecureHelper.GenerateSecuredPassword(password, Encoding.Default.GetBytes("ADSD"));
+            var passHash = SecureHelper.GenerateSecuredPassword(password, Encoding.Default.GetBytes("ADSD"));
             var userId = _appDbClient.GetUserIdByCredentials(userName, passHash);
 
             
             return userId;
+        }
+
+        public int Register(string userName, string passHash)
+        {
+            return _appDbClient.RegisterUser(userName, passHash);
+        }
+
+        public void ActivateAccount(int userId)
+        {
+            _appDbClient.AuthActivate(userId);
         }
     }
 }

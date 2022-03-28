@@ -1,5 +1,8 @@
+using ADSD.Backend.App.Helpers;
 using ADSD.Backend.App.Json;
 using ADSD.Backend.App.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ADSD.Backend.App.Controllers;
@@ -21,6 +24,16 @@ public class UserController : Controller
         return Json(_userService.GetUsers());
     }
 
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
+    [HttpGet("profile")]
+    public IActionResult GetCurrentUser()
+    {
+        var userId = User.GetUserId();
+        return userId.HasValue 
+            ? GetUser(userId.Value) 
+            : Unauthorized();
+    }
+    
     [HttpGet("{id:int}")]
     public IActionResult GetUser([FromRoute] int id)
     {
@@ -34,6 +47,7 @@ public class UserController : Controller
     }
 
     [HttpPost("")]
+    [Obsolete("Use /register and PUT User/{id}")]
     public IActionResult CreateUser([FromBody] UserFullInfo userFullInfo)
     {
         var userId = _userService.CreateUser(userFullInfo);
@@ -43,7 +57,21 @@ public class UserController : Controller
     [HttpPut("{id:int}")]
     public IActionResult UpdateUser([FromRoute] int id, [FromBody] UserFullInfo userFullInfo)
     {
-        _userService.UpdateUser(id, userFullInfo);
+        _userService.UpdateUser(id, userFullInfo, true);
+        return Ok();
+    }
+    
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
+    [HttpPut("profile")]
+    public IActionResult UpdateUser([FromBody] UserFullInfo userFullInfo)
+    {
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        _userService.UpdateUser(userId.Value, userFullInfo, false);
         return Ok();
     }
 }

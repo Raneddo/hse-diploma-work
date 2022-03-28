@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Text;
 using ADSD.Backend.App.Json;
 using ADSD.Backend.App.Models;
 using ADSD.Backend.Common;
@@ -450,62 +449,6 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
                     AgendaId = agendaId,
                     MultiChoice = multiChoice
                 };
-            }
-        }
-        finally
-        {
-            if (connectionNeedClose)
-            {
-                connection?.Close();
-            }
-        }
-    }
-
-    public IEnumerable<OptionInfo> GetOptionsInfo(int userId, int optionId = 0, SqlConnection connection = null, SqlTransaction transaction = null)
-    {
-        throw new NotImplementedException();
-        var connectionNeedClose = connection == null;
-        try
-        {
-            connection ??= new SqlConnection(_connectionString);
-        
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
-
-            using var command = new SqlCommand("[dbo].[poll_options]", connection);
-            command.CommandType = CommandType.StoredProcedure;
-            command.Parameters.AddWithValue("user_id", userId);
-            command.Parameters.AddWithValue("option_id", optionId);
-
-            if (transaction != null)
-            {
-                command.Transaction = transaction;
-            }
-        
-            using var reader = command.ExecuteReader();
-
-            var optionIdOrdinal = reader.GetOrdinal("id");
-            var pollIdOrdinal = reader.GetOrdinal("poll_id");
-            var textOrdinal = reader.GetOrdinal("text");
-            var countOrdinal = reader.GetOrdinal("count");
-            var isChosenOrdinal = reader.GetOrdinal("is_chosen");
-
-            while (reader.Read())
-            {
-                // var pollId = reader.GetInt32(optionIdOrdinal);
-                // var name = reader.GetString(nameOrdinal);
-                // var text = reader.GetStringSafe(textOrdinal);
-                // var multiChoice = reader.GetBoolean(multiChoiceOrdinal);
-                //
-                // yield return new PollResponse
-                // {
-                //     Id = pollId,
-                //     Name = name,
-                //     Text = text,
-                //     MultiChoice = multiChoice
-                // };
             }
         }
         finally
@@ -969,6 +912,104 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
         }
     }
     
+    public int RegisterUser(string userName, string passHash,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[auth_register]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@username", userName);
+            command.Parameters.AddWithValue("@pass_hash", passHash);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            using var reader = command.ExecuteReader();
+        
+            var idOrdinal = reader.GetOrdinal("id");
+
+            if (reader.Read())
+            {
+                var userId = reader.GetInt32(idOrdinal);
+
+                return userId;
+            }
+
+            return 0;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
+    public InfoJson GetInfoByKey(string key,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[info_get]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@key", key);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            using var reader = command.ExecuteReader();
+
+            var textOrdinal = reader.GetOrdinal("text");
+
+            if (reader.Read())
+            {
+                var text = reader.GetStringSafe(textOrdinal);
+                return new InfoJson()
+                {
+                    Key = key,
+                    Text = text,
+                };
+            }
+
+            return new InfoJson()
+            {
+                Key = key,
+                Text = string.Empty,
+            };
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
     public int CreateUser(UserFullInfo userFullInfo,
         SqlConnection connection = null, SqlTransaction transaction = null)
     {
@@ -1028,6 +1069,146 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
         }
     }
     
+    public void DeleteAgenda(int id,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[agenda_delete]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@id", id);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+        
+    }
+    
+    public void MergeInfo(string key, string text,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[info_merge]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@key", key);
+            command.Parameters.AddWithValue("@text", text);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
+    public void AuthActivate(int userId,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[auth_activate]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@user_id", userId);
+            
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
+    public void AuthUpdate(int userId, string userName, string passHash,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[auth_edit]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@id", userId);
+            command.Parameters.AddWithValue("@username", userName);
+            command.Parameters.AddWithValue("@pass_hash", passHash);
+            
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
     public void UpdateUser(int id, UserFullInfo userFullInfo,
         SqlConnection connection = null, SqlTransaction transaction = null)
     {
@@ -1056,7 +1237,7 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
             command.Parameters.AddWithValue("@full_name", userFullInfo.FullName);
             command.Parameters.AddWithValue("@prefix", userFullInfo.Prefix);
             command.Parameters.AddWithValue("@email", userFullInfo.Email);
-            command.Parameters.AddWithValue("@organization_name", userFullInfo.Organization);
+            command.Parameters.AddWithValue("@organization_name", userFullInfo.Organization ?? string.Empty);
             command.Parameters.AddWithValue("@application_status", userFullInfo.ApplicationStatus);
             command.Parameters.AddWithValue("@is_active", userFullInfo.IsActive);
 
@@ -1097,6 +1278,55 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
         var userId = reader.GetInt32(userIdOrdinal);
         return userId;
     }
+    
+    public void UpdateUserRoles(int id, List<string> roles,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            var rolesString = roles
+                .Select(x =>
+                {
+                    _ = Enum.TryParse<UserRole>(x, out var roleId);
+                    return (int)roleId;
+                })
+                .Select(x => $"({x}, {id})");
+
+            var text = @$"
+DELETE FROM [UserGroup]
+    WHERE user_id = {id};
+
+INSERT INTO [UserGroup]
+    ([group], user_id) 
+    VALUES {string.Join(",", rolesString)};
+";
+
+            using var command = new SqlCommand(text, connection);
+            command.CommandType = CommandType.Text;
+            
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            command.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
 
     public IEnumerable<UserRole> GetRolesByUserId(int userId)
     {
@@ -1125,10 +1355,12 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
         {
             fullNameList.Add(prefix);
         }
+
         if (!string.IsNullOrWhiteSpace(firstName))
         {
             fullNameList.Add(firstName);
         }
+
         if (!string.IsNullOrWhiteSpace(lastName))
         {
             fullNameList.Add(lastName);

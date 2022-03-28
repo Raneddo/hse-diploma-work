@@ -29,6 +29,10 @@ public class UserService
     public UserFullInfo GetUser(int id)
     {
         var user = _appDbClient.GetUserById(id);
+        if (user == null)
+        {
+            return null;
+        }
         user.Roles = _appDbClient.GetRolesByUserId(user.Id)
             .Select(x => x.ToString())
             .ToList();
@@ -37,11 +41,22 @@ public class UserService
 
     public int CreateUser(UserFullInfo userFullInfo)
     {
-        return _appDbClient.CreateUser(userFullInfo);
+        var userId = _appDbClient.CreateUser(userFullInfo);
+        _appDbClient.UpdateUserRoles(userId, userFullInfo.Roles);
+        return userId;
     }
 
-    public void UpdateUser(int id, UserFullInfo userFullInfo)
+    public void UpdateUser(int id, UserFullInfo userFullInfo, bool withRoles)
     {
         _appDbClient.UpdateUser(id, userFullInfo);
+        if (withRoles)
+        {
+            _appDbClient.UpdateUserRoles(id, userFullInfo.Roles);
+        }
+    }
+
+    public void ChangeCredentials(int userId, string userName, string passHash)
+    {
+        _appDbClient.AuthUpdate(userId, userName, passHash);
     }
 }

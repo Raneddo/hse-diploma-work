@@ -4,6 +4,7 @@ using ADSD.Backend.App.Models;
 using ADSD.Backend.App.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +13,35 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+    {
+        var securityDefinition = new OpenApiSecurityScheme()
+            {
+                Name = "Bearer",
+                BearerFormat = "JWT",
+                Scheme = "bearer",
+                Description = "Specify the authorization token.",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.Http,
+            };
+        options.AddSecurityDefinition("jwt_auth", securityDefinition);
+
+        // Make sure swagger UI requires a Bearer token specified
+        var securityScheme = new OpenApiSecurityScheme()
+        {
+            Reference = new OpenApiReference()
+            {
+                Id = "jwt_auth",
+                Type = ReferenceType.SecurityScheme
+            }
+        };
+        var securityRequirements = new OpenApiSecurityRequirement()
+        {
+            {securityScheme, Array.Empty<string>()},
+        };
+        options.AddSecurityRequirement(securityRequirements);
+    }
+);
 builder.Services.AddMemoryCache(item => { item.SizeLimit = 1000; });
 builder.Services.AddScoped<SessionTokenDbClient>();
 builder.Services.AddScoped<BasicAuthorizationHandler>();
@@ -20,6 +49,7 @@ builder.Services.AddScoped<AgendaService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PollService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<InfoService>();
 builder.Services.AddScoped<AppDbClient>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -47,7 +77,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddControllersWithViews();
-builder.Services.AddMvc();
+builder.Services.AddMvcCore();
 
 if (builder.Environment.IsDevelopment())
 {
