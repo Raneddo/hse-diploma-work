@@ -14,21 +14,23 @@ using Microsoft.IdentityModel.Tokens;
 namespace ADSD.Backend.App.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("/api/[controller]")]
     public class AuthController : Controller
     {
         private readonly AuthService _authService;
         private readonly UserService _userService;
+        private readonly EmailService _emailService;
 
-        public AuthController(AuthService authService, UserService userService)
+        public AuthController(AuthService authService, UserService userService, EmailService emailService)
         {
             _authService = authService;
             _userService = userService;
+            _emailService = emailService;
         }
 
         [AllowAnonymous]
         [ProducesResponseType( typeof(RegisterUserResponse), 200)]
-        [HttpPost("/register")]
+        [HttpPost("register")]
         public IActionResult Register([FromBody] RegisterUserRequest request)
         {
             var password = SecureHelper.GenerateRandomPassword();
@@ -51,6 +53,8 @@ namespace ADSD.Backend.App.Controllers
             var secureData = HexadecimalEncoding
                 .ToHexString($"{userId}\0{request.UserName}\0{password}");
 
+            _emailService.SendRegisterMessage(request.UserName, secureData, request.Email);
+            
             return Json(new RegisterUserResponse
             {
                 Id = userId,
@@ -61,28 +65,58 @@ namespace ADSD.Backend.App.Controllers
         }
 
         [AllowAnonymous]
-        [HttpPost("/login")]
+        [HttpPost("password/recover")]
+        public IActionResult PasswordRecover(PasswordRecoverRequest request)
+        {
+            var userId = _authService.HardLogin(request.Email);
+            var authUser = _authService.GetUser(userId);
+
+            var password = SecureHelper.GenerateRandomPassword();
+            var passHash = SecureHelper.GenerateSecuredPassword(password, Encoding.Default.GetBytes("ADSD"));
+            
+            _emailService.SendPasswordRecover(authUser.UserName, password, request.Email);
+            _authService.ChangeCredentials(userId, authUser.UserName, passHash);
+            return Ok();
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [HttpPost("password/change")]
+        public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var userId = User.GetUserId();
+            if (!userId.HasValue)
+            {
+                return Unauthorized();
+            }
+
+            var authUser = _authService.GetUser(userId.Value);
+
+            var loginUserId = _authService.Login(authUser.UserName, request.OldPassword);
+            if (userId != loginUserId)
+            {
+                return Unauthorized("Invalid old password");
+            }
+
+            _authService.ChangeCredentials(userId.Value, authUser.UserName, request.NewPassword);
+            return Ok();
+        }
+        
+
+        [AllowAnonymous]
+        [HttpPost("login")]
         public IActionResult Token([FromBody] UserCredentials userCredentials)
         {
             try
             {
-                var identity = GetIdentity(userCredentials.UserName, userCredentials.Password);
+                var userId = _authService.Login(userCredentials.UserName, userCredentials.Password);
+                var identity = GetIdentity(userId);
                 if (identity == null)
                 {
                     return BadRequest(new { errorText = "Invalid username or password." });
                 }
  
-                var now = DateTime.UtcNow;
-                // создаем JWT-токен
-                var jwt = new JwtSecurityToken(
-                    issuer: AuthOptions.Issuer,
-                    audience: AuthOptions.Audience,
-                    notBefore: now,
-                    claims: identity.Claims,
-                    expires: now.Add(TimeSpan.FromMinutes(AuthOptions.Lifetime)),
-                    signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
-                var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
- 
+                var encodedJwt = GenerateJwt(identity);
+
                 var response = new
                 {
                     access_token = encodedJwt,
@@ -97,8 +131,24 @@ namespace ADSD.Backend.App.Controllers
             }
         }
 
+        private static string GenerateJwt(ClaimsIdentity identity)
+        {
+            var now = DateTime.UtcNow;
+            // создаем JWT-токен
+            var jwt = new JwtSecurityToken(
+                issuer: AuthOptions.Issuer,
+                audience: AuthOptions.Audience,
+                notBefore: now,
+                claims: identity.Claims,
+                expires: now.Add(TimeSpan.FromMinutes(AuthOptions.Lifetime)),
+                signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(),
+                    SecurityAlgorithms.HmacSha256));
+            var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
+            return encodedJwt;
+        }
+
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
-        [HttpPut("/activate")]
+        [HttpPut("activate")]
         public IActionResult ActivateAccount([FromBody] UserCredentials userCredentials)
         {
             var userId = User.GetUserId();
@@ -110,11 +160,11 @@ namespace ADSD.Backend.App.Controllers
             _authService.ActivateAccount(userId.Value);
             var passHash = SecureHelper.GenerateSecuredPassword(userCredentials.Password,
                 Encoding.Default.GetBytes("ADSD"));
-            _userService.ChangeCredentials(userId.Value, userCredentials.UserName, passHash);
+            _authService.ChangeCredentials(userId.Value, userCredentials.UserName, passHash);
             return Ok();
         }
 
-        [HttpGet("/activate/{secureData}")]
+        [HttpGet("activate/{secureData}")]
         public IActionResult ActivateByLink([FromRoute] string secureData)
         {
             var decoded = HexadecimalEncoding.FromHexString(secureData);
@@ -143,11 +193,11 @@ namespace ADSD.Backend.App.Controllers
             return Json(_userService.GetUser(userId));
         }
  
-        private ClaimsIdentity GetIdentity(string username, string password)
+        private ClaimsIdentity GetIdentity(int userId)
         {
-            var userId = _authService.Login(username, password);
             var user = _userService.GetUser(userId);
-            if (userId == default || user == null)
+            var authUser = _authService.GetUser(userId);
+            if (userId == default || user == null || authUser == null)
             {
                 return null;
             }
@@ -160,7 +210,7 @@ namespace ADSD.Backend.App.Controllers
             var claims = new List<Claim>
             {
                 new("id", userId.ToString()),
-                new(ClaimsIdentity.DefaultNameClaimType, username),
+                new(ClaimsIdentity.DefaultNameClaimType, authUser.UserName),
             };
             claims.AddRange(user.Roles.Select(role => new Claim(ClaimsIdentity.DefaultRoleClaimType, role)));
             var claimsIdentity =

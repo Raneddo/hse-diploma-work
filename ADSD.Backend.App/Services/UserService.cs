@@ -54,9 +54,4 @@ public class UserService
             _appDbClient.UpdateUserRoles(id, userFullInfo.Roles);
         }
     }
-
-    public void ChangeCredentials(int userId, string userName, string passHash)
-    {
-        _appDbClient.AuthUpdate(userId, userName, passHash);
-    }
 }

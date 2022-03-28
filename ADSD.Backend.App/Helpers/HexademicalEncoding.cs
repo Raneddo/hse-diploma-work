@@ -2,7 +2,7 @@ using System.Text;
 
 namespace ADSD.Backend.App.Helpers;
 
-public class HexadecimalEncoding
+public static class HexadecimalEncoding
 {
     public static string ToHexString(string str)
     {

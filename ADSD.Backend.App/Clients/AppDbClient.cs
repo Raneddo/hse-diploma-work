@@ -1069,6 +1069,49 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
         }
     }
     
+    public int FindUserByEmail(string email,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
+        
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[user_email_find]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@email", email);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            using var reader = command.ExecuteReader();
+
+            var idOrdinal = reader.GetOrdinal("id");
+
+            if (reader.Read())
+            {
+                return reader.GetInt32(idOrdinal);
+            }
+
+            return 0;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
+    }
+    
     public void DeleteAgenda(int id,
         SqlConnection connection = null, SqlTransaction transaction = null)
     {
@@ -1101,7 +1144,60 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
                 connection?.Close();
             }
         }
+    }
+    
+    public AuthUser GetAuthUser(int userId,
+        SqlConnection connection = null, SqlTransaction transaction = null)
+    {
+        var connectionNeedClose = connection == null;
+        try
+        {
+            connection ??= new SqlConnection(_connectionString);
         
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = new SqlCommand("[dbo].[auth_get]", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@id", userId);
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            using var reader = command.ExecuteReader();
+
+            var idOrdinal = reader.GetOrdinal("user_id");
+            var userNameOrdinal = reader.GetOrdinal("username");
+            var isActiveOrdinal = reader.GetOrdinal("is_activated");
+
+            if (reader.Read())
+            {
+                var id = reader.GetInt32(idOrdinal);
+                var userName = reader.GetStringSafe(userNameOrdinal);
+                var isActivate = reader.GetBoolean(isActiveOrdinal);
+
+                return new AuthUser()
+                {
+                    Id = id,
+                    UserName = userName,
+                    IsActive = isActivate,
+                };
+            }
+
+            return null;
+        }
+        finally
+        {
+            if (connectionNeedClose)
+            {
+                connection?.Close();
+            }
+        }
     }
     
     public void MergeInfo(string key, string text,

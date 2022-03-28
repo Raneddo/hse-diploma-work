@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using ADSD.Backend.App;
 using ADSD.Backend.App.Clients;
 using ADSD.Backend.App.Models;
@@ -50,6 +51,7 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PollService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<InfoService>();
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<AppDbClient>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -76,6 +78,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
         };
     });
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: "CORSDisable",
+        corsPolicyBuilder =>
+        {
+            corsPolicyBuilder.AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .SetIsOriginAllowedToAllowWildcardSubdomains();
+        });
+});
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddMvcCore();
 
@@ -98,5 +113,6 @@ app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
 });
+app.UseCors("CORSDisable");
 
 app.Run();
