@@ -79,20 +79,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: "CORSDisable",
-        corsPolicyBuilder =>
-        {
-            corsPolicyBuilder.AllowAnyOrigin()
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .SetIsOriginAllowedToAllowWildcardSubdomains();
-        });
-});
-
 builder.Services.AddControllersWithViews();
-builder.Services.AddMvcCore();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -108,11 +95,22 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseRouting();
+app.UseCors(corsPolicyBuilder =>
+{
+    corsPolicyBuilder
+        .WithOrigins("http://localhost:3000")
+        .WithOrigins("https://adminwr.raneddo.ml")
+        .WithOrigins("https://mini-admin.netlify.app")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .SetIsOriginAllowedToAllowWildcardSubdomains()
+        .AllowCredentials();
+});
+app.UseAuthentication();
 app.UseAuthorization();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
 });
-app.UseCors("CORSDisable");
 
 app.Run();
