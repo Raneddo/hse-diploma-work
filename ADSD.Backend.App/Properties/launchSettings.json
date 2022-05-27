@@ -17,7 +17,9 @@
       "applicationUrl": "https://localhost:7097;http://localhost:5097",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "SQL_EPCCONF_PASSWORD": "pX0lU2pW5z"
+        "SQL_AUTH_CONNECTION_STRING": "Server=db.infostrategic.com;Database=epcconf;User Id=epcconf;Password={password};trust server certificate=True;",
+        "SQL_CONNECTION_STRING": "Server=db.infostrategic.com;Database=epcconf;User Id=epcconf;Password={password};trust server certificate=True;",
+        "SECRET_KEY": "SECREY_KEY_HERESECREY_KEY_HERE"
       }
     },
     "IIS Express": {
@@ -26,7 +28,9 @@
       "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "SQL_EPCCONF_PASSWORD": "pX0lU2pW5z"
+        "SQL_AUTH_CONNECTION_STRING": "Server=db.infostrategic.com;Database=epcconf;User Id=epcconf;Password={password};trust server certificate=True;",
+        "SQL_CONNECTION_STRING": "Server=db.infostrategic.com;Database=epcconf;User Id=epcconf;Password={password};trust server certificate=True;",
+        "SECRET_KEY": "SECREY_KEY_HERESECREY_KEY_HERE"
       }
     }
   }

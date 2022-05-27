@@ -53,7 +53,14 @@ namespace ADSD.Backend.App.Controllers
             var secureData = HexadecimalEncoding
                 .ToHexString($"{userId}\0{request.UserName}\0{password}");
 
-            _emailService.SendRegisterMessage(request.UserName, secureData, request.Email);
+            try
+            {
+                _emailService.SendRegisterMessage(request.UserName, secureData, request.Email);
+            }
+            catch (MimeKit.ParseException e)
+            {
+                return BadRequest($"Email error: {e.Message}");
+            }
             
             return Json(new RegisterUserResponse
             {
@@ -94,7 +101,9 @@ namespace ADSD.Backend.App.Controllers
             var loginUserId = _authService.Login(authUser.UserName, request.OldPassword);
             if (userId != loginUserId)
             {
-                return Unauthorized("Invalid old password");
+                var response = Json("Invalid old password");
+                response.StatusCode = 403;
+                return response;
             }
 
             _authService.ChangeCredentials(userId.Value, authUser.UserName, request.NewPassword);
@@ -103,6 +112,9 @@ namespace ADSD.Backend.App.Controllers
         
 
         [AllowAnonymous]
+        [ProducesResponseType(typeof(LoginResponse), 200)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(400)]
         [HttpPost("login")]
         public IActionResult Token([FromBody] UserCredentials userCredentials)
         {
@@ -117,10 +129,10 @@ namespace ADSD.Backend.App.Controllers
  
                 var encodedJwt = GenerateJwt(identity);
 
-                var response = new
+                var response = new LoginResponse()
                 {
-                    access_token = encodedJwt,
-                    username = identity.Name
+                    AccessToken = encodedJwt,
+                    UserName = identity.Name
                 };
  
                 return Json(response);

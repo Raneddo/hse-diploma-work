@@ -2,7 +2,7 @@ namespace ADSD.Backend.App.Models;
 
 public enum UserRole
 {
-    User = 0,
-    Speaker = 1,
-    Admin = 2,
+    User = 1,
+    Speaker = 2,
+    Admin = 3,
 }

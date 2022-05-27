@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using ADSD.Backend.App.Models;
 using Microsoft.Data.SqlClient;
 
@@ -12,8 +12,7 @@ public class SessionTokenDbClient
     public SessionTokenDbClient(IConfiguration configuration)
     {
         _configuration = configuration;
-        _authDbConnectionString = configuration.GetConnectionString("authDbConnectionString")
-            .Replace("{password}", Environment.GetEnvironmentVariable("SQL_EPCCONF_PASSWORD"));
+        _authDbConnectionString = Environment.GetEnvironmentVariable("SQL_AUTH_CONNECTION_STRING");
     }
 
     public async Task<AuthData> GetUserByToken(string token)

@@ -1,5 +1,6 @@
 using ADSD.Backend.App.Json;
 using ADSD.Backend.App.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,16 +18,18 @@ public class InfoController : Controller
     }
     
     [AllowAnonymous]
+    [ProducesResponseType(typeof(InfoResponse), 200)]
     [HttpGet("{key}")]
     public IActionResult GetInfo([FromRoute] string key)
     {
         return Json(_infoService.GetInfoByKey(key));
     }
 
-    [HttpPut("")]
-    public IActionResult UpdateInfo([FromBody] InfoJson infoJson)
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
+    [HttpPut("{key}")]
+    public IActionResult UpdateInfo([FromRoute] string key, [FromBody] InfoJsonRequest infoJsonRequest)
     {
-        _infoService.UpdateOrInsertInfo(infoJson.Key, infoJson.Text);
+        _infoService.UpdateOrInsertInfo(key, infoJsonRequest.Text);
         return Ok();
     }
 }

@@ -11,8 +11,7 @@ public class AppDbClient
     public AppDbClient(IConfiguration configuration)
     {
         _configuration = configuration;
-        _connectionString = configuration.GetConnectionString("appDbConnectionString")
-            .Replace("{password}", Environment.GetEnvironmentVariable("SQL_EPCCONF_PASSWORD"));
+        _connectionString = Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING");
     }
     
     private readonly string _connectionString;
@@ -958,7 +957,7 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
         }
     }
     
-    public InfoJson GetInfoByKey(string key,
+    public InfoResponse GetInfoByKey(string key,
         SqlConnection connection = null, SqlTransaction transaction = null)
     {
         var connectionNeedClose = connection == null;
@@ -988,18 +987,10 @@ INSERT INTO AgendaSpeaker (agenda_id, speaker_id)
             if (reader.Read())
             {
                 var text = reader.GetStringSafe(textOrdinal);
-                return new InfoJson()
-                {
-                    Key = key,
-                    Text = text,
-                };
+                return new InfoResponse(key, text);
             }
 
-            return new InfoJson()
-            {
-                Key = key,
-                Text = string.Empty,
-            };
+            return new InfoResponse(key, string.Empty);
         }
         finally
         {
@@ -1441,6 +1432,276 @@ INSERT INTO [UserGroup]
         while (reader.Read())
         {
             yield return (UserRole)reader.GetInt32(groupOrdinal);
+        }
+    }
+    
+    public IEnumerable<ChatShortInfo> GetChatsByUser(int userId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[chats_by_user]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@user_id", userId);
+
+        using var reader = cmd.ExecuteReader();
+
+        var chatIdOrdinal = reader.GetOrdinal("chat_id");
+        var chatTypeOrdinal = reader.GetOrdinal("chat_type");
+        var chatNameOrdinal = reader.GetOrdinal("chat_name");
+
+        while (reader.Read())
+        {
+            var chatId = reader.GetInt64(chatIdOrdinal);
+            var chatType = (ChatTypeEnum) reader.GetInt16(chatTypeOrdinal);
+            var chatName = reader.GetString(chatNameOrdinal);
+            
+            yield return new ChatShortInfo(chatId, chatType, chatName);
+        }
+    }
+    
+    public IEnumerable<PersonalChatNameMapping> GetSecondUserNameByUserId(int userId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        const string text = @"
+        SELECT chat_id, u.full_name
+            FROM PersonalChat pc
+            inner join [User] u ON pc.second_user_id = u.id
+            WHERE first_user_id = @user_id
+";
+        
+        using var cmd = new SqlCommand(text, connection);
+        cmd.CommandType = CommandType.Text;
+
+        cmd.Parameters.AddWithValue("@user_id", userId);
+
+        using var reader = cmd.ExecuteReader();
+
+        var chatIdOrdinal = reader.GetOrdinal("chat_id");
+        var chatNameOrdinal = reader.GetOrdinal("full_name");
+
+        while (reader.Read())
+        {
+            var chatId = reader.GetInt64(chatIdOrdinal);
+            var chatName = reader.GetString(chatNameOrdinal);
+            
+            yield return new PersonalChatNameMapping(chatId, chatName);
+        }
+    }
+    
+    public long CreateChat(string chatName, ChatTypeEnum chatType)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[chat_new]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@chat_name", chatName);
+        cmd.Parameters.AddWithValue("@chat_type", (short)chatType);
+
+        using var reader = cmd.ExecuteReader();
+
+        var chatIdOrdinal = reader.GetOrdinal("chat_id");
+
+        if (!reader.Read()) return 0;
+        
+        var chatId = reader.GetInt64(chatIdOrdinal);
+
+        return chatId;
+    }
+    
+    public void LinkPersonalChatToUsers(long chatId, int firstUserId, int secondUserId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[chat_personal_link]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@chat_id", chatId);
+        cmd.Parameters.AddWithValue("@first_user_id", firstUserId);
+        cmd.Parameters.AddWithValue("@second_user_id", secondUserId);
+
+        cmd.ExecuteNonQuery();
+    }
+    
+    public void AddUsersToChat(long chatId, IEnumerable<int> users)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var transaction = connection.BeginTransaction();
+
+        foreach (var userId in users)
+        {
+            using var cmd = new SqlCommand("[chat_user_add]", connection, transaction);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.Parameters.AddWithValue("@user_id", userId);
+            cmd.Parameters.AddWithValue("@chat_id", chatId);
+            
+            cmd.ExecuteNonQuery();
+        }
+        
+        transaction.Commit();
+    }
+    
+    public bool UserInChat(long chatId, int userId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[user_in_chat]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@chat_id", chatId);
+        cmd.Parameters.AddWithValue("@user_id", userId);
+
+        using var reader = cmd.ExecuteReader();
+
+        var okOrdinal = reader.GetOrdinal("ok");
+
+        if (!reader.Read()) return false;
+        
+        var ok = reader.GetInt32(okOrdinal) != 0;
+
+        return ok;
+    }
+    
+    public ChatShortInfo ChatById(long chatId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[chat_by_id]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@chat_id", chatId);
+
+        using var reader = cmd.ExecuteReader();
+
+        var chatTypeOrdinal = reader.GetOrdinal("chat_type");
+        var chatNameOrdinal = reader.GetOrdinal("chat_name");
+
+        while (reader.Read())
+        {
+            var chatType = (ChatTypeEnum) reader.GetInt16(chatTypeOrdinal);
+            var chatName = reader.GetString(chatNameOrdinal);
+            
+            return new ChatShortInfo(chatId, chatType, chatName);
+        }
+
+        return null;
+    }
+    
+    public long SendMessageToChat(int userId, long chatId, string message)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[chat_message_send]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@chat_id", chatId);
+        cmd.Parameters.AddWithValue("@user_id", userId);
+        cmd.Parameters.AddWithValue("@message", message);
+        cmd.Parameters.AddWithValue("@created_at", DateTimeOffset.UtcNow);
+
+        using var reader = cmd.ExecuteReader();
+
+        var messageIdOrdinal = reader.GetOrdinal("message_id");
+
+        if (reader.Read())
+        {
+            var messageId = reader.GetInt64(messageIdOrdinal);
+
+            return messageId;
+        }
+
+        return 0;
+    }
+    
+    public IEnumerable<int> GetChatUsers(long chatId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[chat_participants]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@chat_id", chatId);
+
+        using var reader = cmd.ExecuteReader();
+
+        var userIdOrdinal = reader.GetOrdinal("user_id");
+
+        while (reader.Read())
+        {
+            var userId = reader.GetInt32(userIdOrdinal);
+
+            yield return userId;
+        }
+    }
+    
+    public long? GetPersonalChatId(int firstUserId, int secondUserId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[chat_personal_exists]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@first_user_id", firstUserId);
+        cmd.Parameters.AddWithValue("@second_user_id", secondUserId);
+
+        using var reader = cmd.ExecuteReader();
+
+        var chatIdOrdinal = reader.GetOrdinal("chat_id");
+
+        while (reader.Read())
+        {
+            var chatId = reader.GetInt64(chatIdOrdinal);
+
+            return chatId;
+        }
+
+        return null;
+    }
+    
+    public IEnumerable<ChatMessage> GetChatMessages(long chatId, long afterMessageId, long count)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+
+        using var cmd = new SqlCommand("[dbo].[chat_messages_get]", connection);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@chat_id", chatId);
+        cmd.Parameters.AddWithValue("@after_message_id", afterMessageId);
+        cmd.Parameters.AddWithValue("@count", count);
+
+        using var reader = cmd.ExecuteReader();
+
+        // var chatIdOrdinal = reader.GetOrdinal("chat_id");
+        var userIdOrdinal = reader.GetOrdinal("user_id");
+        var userFullNameOrdinal = reader.GetOrdinal("full_name");
+        var createdAtOrdinal = reader.GetOrdinal("created_at");
+        var messageIdOrdinal = reader.GetOrdinal("message_id");
+        var messageOrdinal = reader.GetOrdinal("message");
+
+        while (reader.Read())
+        {
+            var userId = reader.GetInt32(userIdOrdinal);
+            var userFullName = reader.GetStringSafe(userFullNameOrdinal);
+            var createdAt = reader.GetDateTimeOffset(createdAtOrdinal).UtcDateTime;
+            var messageId = reader.GetInt64(messageIdOrdinal);
+            var message = reader.GetString(messageOrdinal);
+
+            yield return new ChatMessage(messageId, chatId, userId, userFullName, message, createdAt);
         }
     }
 

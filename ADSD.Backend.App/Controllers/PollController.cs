@@ -1,3 +1,4 @@
+using ADSD.Backend.App.Exceptions;
 using ADSD.Backend.App.Helpers;
 using ADSD.Backend.App.Json;
 using ADSD.Backend.App.Services;
@@ -19,6 +20,7 @@ public class PollController : Controller
     }
     
     [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<PollResponse>), 200)]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
     public IActionResult GetPolls()
     {
@@ -31,16 +33,21 @@ public class PollController : Controller
     public IActionResult GetPoll([FromRoute] int id)
     {
         var userId = User.GetUserId() ?? 0;
-        var poll = _pollService.GetPollById(id, userId);
-        if (poll != null)
+        try
         {
+            var poll = _pollService.GetPollById(id, userId);
             return Json(poll);
         }
-
-        return NotFound();
+        catch (HttpCodeException e)
+        {
+            var response = Json(e.Message);
+            response.StatusCode = e.StatusCode;
+            return response;
+        }
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(int), 200)]
     public IActionResult CreatePoll([FromBody] CreatePollRequest req)
     {
         return Json(_pollService.CreatePoll(req.Name, req.Text, req.Options, req.MultiChoice));
@@ -55,7 +62,7 @@ public class PollController : Controller
 
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
     [HttpPost("{id:int}/vote")]
-    public IActionResult Vote([FromRoute] int id, [FromBody] List<int> options)
+    public IActionResult Vote([FromRoute] int id, [FromBody] PollVoteRequest request)
     {
         var userId = User.GetUserId();
         if (!userId.HasValue)
@@ -63,7 +70,7 @@ public class PollController : Controller
             return Unauthorized();
         }
         
-        _pollService.VotePollOptions(id, userId.Value, options);
+        _pollService.VotePollOptions(id, userId.Value, request.OptionIds);
         return Ok();
     }
     

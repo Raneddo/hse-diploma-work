@@ -1,4 +1,5 @@
 ﻿using ADSD.Backend.App.Clients;
+using ADSD.Backend.App.Exceptions;
 using ADSD.Backend.App.Json;
 
 namespace ADSD.Backend.App.Services;
@@ -32,6 +33,10 @@ public class AgendaService
     public AgendaResponse GetAgendaInfo(int id)
     {
         var agenda = _appDbClient.GetAgendaInfo(id);
+        if (agenda == null)
+        {
+            throw new NotFoundException("Agenda not found");
+        }
         agenda.Polls = _appDbClient.GetPollsByAgenda(agenda.Id).ToList();
         agenda.Speakers = _appDbClient
             .GetSpeakersByAgenda(agenda.Id)

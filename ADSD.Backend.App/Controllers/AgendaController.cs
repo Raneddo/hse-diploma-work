@@ -1,5 +1,8 @@
-﻿using ADSD.Backend.App.Json;
+﻿using ADSD.Backend.App.Exceptions;
+using ADSD.Backend.App.Json;
 using ADSD.Backend.App.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ADSD.Backend.App.Controllers;
@@ -16,37 +19,88 @@ public class AgendaController : Controller
     }
     
     [HttpGet]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
+    [ProducesResponseType(typeof(IEnumerable<AgendaResponse>), 200)]
+    [ProducesResponseType(401)]
     public JsonResult GetAgendasList()
     {
         return Json(_agendaService.GetAgendasList());
     }
 
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
+    [ProducesResponseType(typeof(AgendaResponse), 200)]
+    [ProducesResponseType(401)]
     [HttpGet("{id:int}")]
     public JsonResult GetAgendaInfo([FromRoute] int id)
     {
-        return Json(_agendaService.GetAgendaInfo(id));
+        try
+        {
+            return Json(_agendaService.GetAgendaInfo(id));
+        }
+        catch (HttpCodeException e)
+        {
+            var response = Json(e.Message);
+            response.StatusCode = e.StatusCode;
+            return response;
+        }
     }
 
     [HttpPost]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
+    [ProducesResponseType(typeof(int), 200)]
+    [ProducesResponseType(401)]
     public JsonResult AddAgenda([FromBody] UpdateAgendaRequest updateAgendaRequest)
     {
-        var id = _agendaService.CreateAgenda(updateAgendaRequest);
-
-        return Json(new {Id = id});
+        try
+        {
+            var id = _agendaService.CreateAgenda(updateAgendaRequest);
+            return Json(id);
+        }
+        catch (HttpCodeException e)
+        {
+            var response = Json(e.Message);
+            response.StatusCode = e.StatusCode;
+            return response;
+        }
+        
     }
     
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
+    [ProducesResponseType(typeof(IEnumerable<AgendaResponse>), 200)]
+    [ProducesResponseType(401)]
     [HttpPut("{id:int}")]
     public JsonResult UpdateAgenda([FromBody] UpdateAgendaRequest updateAgendaRequest, [FromRoute] int id)
     {
-        _agendaService.UpdateAgenda(id, updateAgendaRequest);
-
-        return Json(new {Id = id});
+        try
+        {
+            _agendaService.UpdateAgenda(id, updateAgendaRequest);
+            return Json(new {Id = id});
+        }
+        catch (HttpCodeException e)
+        {
+            var response = Json(e.Message);
+            response.StatusCode = e.StatusCode;
+            return response;
+        }
+        
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
+    [ProducesResponseType(typeof(IEnumerable<AgendaResponse>), 200)]
+    [ProducesResponseType(401)]
     public IActionResult DeleteAgenda([FromRoute] int id)
     {
-        _agendaService.DeleteAgenda(id);
-        return Ok();
+        try
+        {
+            _agendaService.DeleteAgenda(id);
+            return Ok();
+        }
+        catch (HttpCodeException e)
+        {
+            var response = Json(e.Message);
+            response.StatusCode = e.StatusCode;
+            return response;
+        }
     }
 }

@@ -19,12 +19,16 @@ public class UserController : Controller
     }
     
     [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<UserBaseInfo>), 200)]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
     public IActionResult GetUsersList()
     {
         return Json(_userService.GetUsers());
     }
 
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "User")]
+    [ProducesResponseType(typeof(UserFullInfo), 200)]
+    [ProducesResponseType(401)]
     [HttpGet("profile")]
     public IActionResult GetCurrentUser()
     {
@@ -35,6 +39,8 @@ public class UserController : Controller
     }
     
     [HttpGet("{id:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
+    [ProducesResponseType(typeof(UserFullInfo), 200)]
     public IActionResult GetUser([FromRoute] int id)
     {
         var user = _userService.GetUser(id);
@@ -55,6 +61,7 @@ public class UserController : Controller
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
     public IActionResult UpdateUser([FromRoute] int id, [FromBody] UserFullInfo userFullInfo)
     {
         _userService.UpdateUser(id, userFullInfo, true);

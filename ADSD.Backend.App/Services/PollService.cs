@@ -1,4 +1,5 @@
 using ADSD.Backend.App.Clients;
+using ADSD.Backend.App.Exceptions;
 using ADSD.Backend.App.Json;
 
 namespace ADSD.Backend.App.Services;
@@ -26,6 +27,10 @@ public class PollService
     public PollResponse GetPollById(int pollId, int userId)
     {
         var poll = _dbClient.GetPollById(pollId);
+        if (poll == null)
+        {
+            throw new NotFoundException("No poll for id");
+        }
         poll.Options = _dbClient.GetOptionsByPoll(pollId, userId).ToList();
         poll.VotersCount = poll.Options.Sum(x => x.Count);
         return poll;

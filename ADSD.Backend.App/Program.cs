@@ -1,6 +1,6 @@
-using System.Net.Mail;
 using ADSD.Backend.App;
 using ADSD.Backend.App.Clients;
+using ADSD.Backend.App.Helpers;
 using ADSD.Backend.App.Models;
 using ADSD.Backend.App.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -52,6 +52,8 @@ builder.Services.AddScoped<PollService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<InfoService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<NotificationsService>();
+builder.Services.AddScoped<ChatService>();
 builder.Services.AddScoped<AppDbClient>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -98,12 +100,10 @@ app.UseRouting();
 app.UseCors(corsPolicyBuilder =>
 {
     corsPolicyBuilder
-        .WithOrigins("http://localhost:3000")
-        .WithOrigins("https://adminwr.raneddo.ml")
-        .WithOrigins("https://mini-admin.netlify.app")
+        .WithOrigins("https://*.raneddo.ml", "http://localhost:3000", "https://mini-admin.netlify.app")
+        .SetIsOriginAllowedToAllowWildcardSubdomains()
         .AllowAnyHeader()
         .AllowAnyMethod()
-        .SetIsOriginAllowedToAllowWildcardSubdomains()
         .AllowCredentials();
 });
 app.UseAuthentication();

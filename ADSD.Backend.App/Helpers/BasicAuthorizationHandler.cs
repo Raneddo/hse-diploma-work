@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace ADSD.Backend.App;
+namespace ADSD.Backend.App.Helpers;
 
-public class BasicAuthorizationHandler : AuthorizationHandler<BasicAuthorizationHandler.BasicAuthorizationRequirement>
+public class BasicAuthorizationHandler : AuthorizationHandler<BasicAuthorizationRequirement>
 {
     private readonly IMemoryCache _memoryCache;
     private readonly SessionTokenDbClient _sessionTokenDbClient;
@@ -37,9 +37,5 @@ public class BasicAuthorizationHandler : AuthorizationHandler<BasicAuthorization
                 context.Fail();
             }
         }
-    }
-
-    public class BasicAuthorizationRequirement : IAuthorizationRequirement
-    {
     }
 }

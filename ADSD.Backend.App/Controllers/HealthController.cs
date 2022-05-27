@@ -1,4 +1,5 @@
-﻿using ADSD.Backend.App.Models;
+﻿using ADSD.Backend.App.Helpers;
+using ADSD.Backend.App.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,6 +33,14 @@ public class HealthController : Controller
     public IActionResult CheckNoAuth()
     {
         return Ok();
+    }
+
+    [HttpGet("classes")]
+    public IActionResult GetClassesAndMethods()
+    {
+        var extractor = new ClassesAndMethodsExtractor();
+        extractor.GetAllClassesAndMethodsOfAssembly();
+        return Json("");
     }
 }
 

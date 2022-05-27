@@ -12,7 +12,7 @@ public class InfoService
         _appDbClient = appDbClient;
     }
 
-    public InfoJson GetInfoByKey(string key)
+    public InfoResponse GetInfoByKey(string key)
     {
         return _appDbClient.GetInfoByKey(key);
     }
